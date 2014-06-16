@@ -5,6 +5,7 @@ project(ros_nmpt_saliency)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  message_generation
   cv_bridge
   image_transport
   roscpp
@@ -12,7 +13,6 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   geometry_msgs
   std_msgs
-  message_generation
 )
 
 FILE(GLOB NMPT_SRCS lib/*.cpp)
