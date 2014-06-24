@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   geometry_msgs
   std_msgs
-  message_generation
+  pcl_ros
 )
 
 FILE(GLOB NMPT_SRCS lib/*.cpp)
@@ -52,11 +52,11 @@ find_package(OpenCV REQUIRED)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
- add_message_files(
-   FILES
-   targets.msg
+# add_message_files(
+#   FILES
+#   targets.msg
 #   Message2.msg
- )
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -73,11 +73,11 @@ find_package(OpenCV REQUIRED)
 # )
 
 ## Generate added messages and services with any dependencies listed here
- generate_messages(
-   DEPENDENCIES
-   sensor_msgs
-   geometry_msgs
- )
+# generate_messages(
+#   DEPENDENCIES
+#   sensor_msgs
+#   geometry_msgs
+# )
 
 ###################################
 ## catkin specific configuration ##
