@@ -335,6 +335,7 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int x, int y, int radiu
             average_point.y += point.y;
             average_point.z += point.z;
             cells_visited++;tf::TransformBroadcaster br;
+            
         }
 
     }
@@ -391,9 +392,14 @@ void point_cloud_callback(const sensor_msgs::PointCloud2ConstPtr & msg)
 		int im_y = lqrpt[1] * resized_image.rows;
 
         // Get 3d point
-        geometry_msgs::Point point = get_average_point(cloud, im_x, im_y, radius);
+        //geometry_msgs::Point world_point = get_average_point(cloud, im_x, im_y, radius);
+        ROS_INFO("WIDTH: %d, HEIGHT: %d", image.cols, image.rows);
+        int b_x = im_x * (image.cols / im_size.width);
+        int b_y = im_y * (image.rows / im_size.height);
+        pcl::PointXYZRGB world_point = cloud.at(b_x, b_y);
+        ROS_INFO("scale: %f, im_x: %d, im_y: %d, b_x: %d, b_y %d, x: %f, y: %f, z: %f", ratio, im_x, im_y, b_x, b_y, world_point.x, world_point.y, world_point.z);
 
-        // Publish tf
+        /*// Publish tf
         static tf::TransformBroadcaster br;
         tf::Transform transform;
         transform.setOrigin(tf::Vector3(point.x, point.y, point.z));
@@ -405,7 +411,7 @@ void point_cloud_callback(const sensor_msgs::PointCloud2ConstPtr & msg)
         point_stamped.header.stamp = msg->header.stamp;
         point_stamped.header.frame_id = msg->header.frame_id;
         point_stamped.point = point;
-		point_pub.publish(point_stamped);
+		point_pub.publish(point_stamped);*/
 
         // Visualize
 		if(visualize)
@@ -425,8 +431,10 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
 
 	try
 	{
+		ROS_INFO("BEFORE");
 		cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
 		image = cv_ptr->image;
+		ROS_INFO("AFTER");
 
 		double ratio = im_size.width * 1. / image.cols;
 		resize(image, resized_image, Size(0,0), ratio, ratio, INTER_NEAREST);
@@ -446,9 +454,12 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
 		salientSpot.updateTrackerPosition();
 		lqrpt = salientSpot.getCurrentPosition();
 
-		point.x = lqrpt[0] * resized_image.cols;
-		point.y = lqrpt[1] * resized_image.rows;
-		point.z = numeric_limits<float>::max();
+        geometry_msgs::PointStamped point_stamped;
+        point_stamped.header.stamp = msg->header.stamp;
+        point_stamped.header.frame_id = msg->header.frame_id;
+		point_stamped.point.x = lqrpt[0] * resized_image.cols;
+		point_stamped.point.y = lqrpt[1] * resized_image.rows;
+		point_stamped.point.z = numeric_limits<float>::max();
 		point_pub.publish(point);
 
         if(visualize)
@@ -456,9 +467,9 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
 		    update_visualization(resized_image, msg->header, point.x, point.y);
 		}
 	}
-	catch (...)
+	catch (Exception e)
 	{
-		ROS_ERROR("Something went wrong...");
+		ROS_ERROR("Image callback: %s", e.what());
 	}
 }
 
@@ -502,6 +513,6 @@ int main(int argc, char **argv)
         image_viz_pub = nh.advertise<sensor_msgs::Image>("/salient_point_viz", 1);
 	}
 
-	point_pub = nh.advertise<geometry_msgs::Point>("/salient_point", 50);
+	point_pub = nh.advertise<geometry_msgs::PointStamped>("/salient_point", 50);
 	ros::spin();
 }
