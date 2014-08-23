@@ -1,0 +1,7 @@
+<launch>
+    <node pkg="ros_nmpt_saliency" type="ros_nmpt_saliency_node" name="ros_nmpt_saliency_node" output="screen">
+        <param name="point_cloud_topic" value="/softkinetic_camera/depth_registered/points" />
+        <param name="visualise" value="true" />
+        <param name="use_depth" value="true" />
+    </node>
+</launch>
