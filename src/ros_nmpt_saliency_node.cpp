@@ -83,8 +83,10 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int radiu
     fy = cam_info.P[5];
     cx = cam_info.P[2];
     cy = cam_info.P[6];
-    average_point.y = -((u - cx) / fx) * OUT_OF_RANGE_DEPTH;
-    average_point.z = -((v - cy) / fy) * OUT_OF_RANGE_DEPTH;
+
+    // x and y use the standard image processing convention, (i.e., x goes from left to right and y goes from top to bottom). z means depth. Again, a standard right-handed coordinate system.
+    //average_point.x = OUT_OF_RANGE_DEPTH * (u - cx) / fx; // Left
+    //average_point.y = OUT_OF_RANGE_DEPTH * (v - cy) / fy; // Right
 
     //Try to find depth value in range
     width = cloud.width;
@@ -103,9 +105,11 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int radiu
         {
             cloud_point = cloud.at(i, j);
 
-            if(cloud_point.x > 0.0)
+            if(cloud_point.x > 0.0 || cloud_point.y > 0.0 || cloud_point.z > 0.0)
             {
-                depth_sum += cloud_point.x;
+                average_point.x += cloud_point.x;
+                average_point.y += cloud_point.y;
+                average_point.z += cloud_point.z;
                 num_valid_depths++;
             }
         }
@@ -113,11 +117,13 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int radiu
 
     if(num_valid_depths < threshold)
     {
-        average_point.x = depth_sum / num_valid_depths;
+        average_point.x = OUT_OF_RANGE_DEPTH * (u - cx) / fx; // Left
+        average_point.y = OUT_OF_RANGE_DEPTH * (v - cy) / fy; // Right
+        average_point.z = OUT_OF_RANGE_DEPTH; // Forward
     }
     else
     {
-        average_point.x = OUT_OF_RANGE_DEPTH;
+        average_point.z = OUT_OF_RANGE_DEPTH;
     }
 
     return average_point;
@@ -200,6 +206,12 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
             point_stamped.header.frame_id = point_cloud_msg.header.frame_id;
             point_stamped.point = point;
             sal_3d_pub.publish(point_stamped);
+
+            static tf::TransformBroadcaster br;
+            tf::Transform transform;
+            transform.setOrigin(tf::Vector3(point.x, point.y, point.z));
+            transform.setRotation(tf::Quaternion(0, 0, 0, 1));
+            br.sendTransform(tf::StampedTransform(transform, msg->header.stamp, point_cloud_msg.header.frame_id, "salient_point"));
         }
         else
         {
