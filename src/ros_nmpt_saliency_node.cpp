@@ -21,6 +21,7 @@
 #include "geometry_msgs/Point.h"
 #include "ros_nmpt_saliency/SalientPoint2D.h"
 #include <tf/transform_broadcaster.h>
+#include <pcl/search/organized.h>
 
 
 using namespace std;
@@ -53,7 +54,7 @@ bool use_depth;
 bool received_cam_info = false;
 bool received_point_cloud = false;
 
-static const double OUT_OF_RANGE_DEPTH = 3.0;
+static const double OUT_OF_RANGE_DEPTH = 8.0;
 
 
 float clamp(float value, float min, float max)
@@ -88,7 +89,7 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int radiu
     width = cloud.width;
     height = cloud.height;
 
-    ROS_INFO("width: %d, height: %d, x: %f, y: %f, z: %f", width, height, pcl_pt.x, pcl_pt.y, pcl_pt.z);
+
 
     if(pcl_pt.z == -1)
     {
@@ -109,35 +110,34 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int radiu
         point.z = pcl_pt.z;
     }
 
+    ROS_INFO("width: %d, height: %d, x: %f, y: %f, z: %f", width, height, pcl_pt.x, pcl_pt.y, pcl_pt.z);
+
     // x and y use the standard image processing convention, (i.e., x goes from left to right and y goes from top to bottom). z means depth. Again, a standard right-handed coordinate system.
     //average_point.x = OUT_OF_RANGE_DEPTH * (u - cx) / fx; // Left
     //average_point.y = OUT_OF_RANGE_DEPTH * (v - cy) / fy; // Right
 
     //Try to find depth value in range
 
-    /*u_start = clamp(u - radius, 0, width);
+    u_start = clamp(u - radius, 0, width);
     u_end = clamp(u + radius, 0, height);
     v_start = clamp(v - radius, 0, height);
-    v_end = clamp(v + radius, 0, height);*/
+    v_end = clamp(v + radius, 0, height);
 
-    //depth_sum = 0.0;
-    //num_valid_depths = 0;
-
-    /*for(int i = u_start; i < u_end; i++)
+    for(int i = u_start; i < u_end; i++)
     {
         for(int j = v_start; j < v_end; j++)
         {
-            cloud_point = cloud.at(i, j);
+             pcl::PointXYZRGB cloud_point = cloud.at(i, j);
 
-            if(cloud_point.x > 0.0 || cloud_point.y > 0.0 || cloud_point.z > 0.0)
+            if(cloud_point.x != -1)
             {
-                average_point.x += cloud_point.x;
-                average_point.y += cloud_point.y;
-                average_point.z += cloud_point.z;
                 num_valid_depths++;
             }
         }
-    }*/
+    }
+
+    ROS_INFO("u: %d, v: %d, rad: %d, us: %d, ue: %d, vs: %d, ve: %d, num rej: %d, num valid: %d", u, v, radius, u_start, u_end, v_start, v_end, radius-num_valid_depths, num_valid_depths);
+
 //
 //    if(num_valid_depths < threshold)
 //    {
