@@ -22,6 +22,8 @@
 #include "ros_nmpt_saliency/SalientPoint2D.h"
 #include <tf/transform_broadcaster.h>
 #include <pcl/search/organized.h>
+#include <boost/thread/mutex.hpp>
+
 
 
 using namespace std;
@@ -46,6 +48,8 @@ geometry_msgs::Point point;
 sensor_msgs::PointCloud2 point_cloud_msg;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloud;
 sensor_msgs::CameraInfo cam_info;
+
+boost::mutex mtx; 
 
 std::string image_topic;
 std::string point_cloud_topic;
@@ -75,6 +79,7 @@ void update_visualization(Mat image, std_msgs::Header header, int x, int y)
 geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int threshold)
 {
     geometry_msgs::Point point;
+    geometry_msgs::Point av_point;
     //pcl::PointXYZRGB cloud_point;
     double fx, fy, cx, cy, depth_sum;
     int width, height, u_start, u_end, v_start, v_end, num_valid_depths;
@@ -91,24 +96,7 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int thres
 
 
 
-    if(pcl_pt.z == -1)
-    {
-        point.x = OUT_OF_RANGE_DEPTH * (u - cx) / fx; // Left
-        point.y = OUT_OF_RANGE_DEPTH * (v - cy) / fy; // Right
-        point.z = OUT_OF_RANGE_DEPTH;
-    }
-    else if(pcl_pt.z == -2)
-    {
-        point.x = OUT_OF_RANGE_DEPTH * (u - cx) / fx; // Left
-        point.y = OUT_OF_RANGE_DEPTH * (v - cy) / fy; // Right
-        point.z = 0.0;
-    }
-    else
-    {
-        point.x = pcl_pt.x;
-        point.y = pcl_pt.y;
-        point.z = pcl_pt.z;
-    }
+    
 
     ROS_INFO("width: %d, height: %d, x: %f, y: %f, z: %f", width, height, pcl_pt.x, pcl_pt.y, pcl_pt.z);
 
@@ -122,6 +110,8 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int thres
     u_end = clamp(u + radius, 0, height);
     v_start = clamp(v - radius, 0, height);
     v_end = clamp(v + radius, 0, height);
+    
+    
 
     num_valid_depths = 0;
     int total = 0;
@@ -134,11 +124,41 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int thres
 
             if(cloud_point.x < 0.0)
             {
+				
+				av_point.x += cloud_point.x;
+				av_point.y += cloud_point.y;
+				av_point.z += cloud_point.z;
                 num_valid_depths++;
             }
 
             total++;
         }
+    }
+    
+    if(pcl_pt.z == -1) // Too far
+    {   
+        if(num_valid_depths > 0)
+		{
+			point = av_point;
+		}
+		else
+		{
+			point.x = OUT_OF_RANGE_DEPTH * (u - cx) / fx; // Left
+			point.y = OUT_OF_RANGE_DEPTH * (v - cy) / fy; // Right
+			point.z = OUT_OF_RANGE_DEPTH;
+		}
+    }
+    else if(pcl_pt.z == -2) // Too close
+    {	
+        point.x = OUT_OF_RANGE_DEPTH * (u - cx) / fx; // Left
+        point.y = OUT_OF_RANGE_DEPTH * (v - cy) / fy; // Right
+        point.z = 0.0;
+    }
+    else
+    {
+        point.x = pcl_pt.x;
+        point.y = pcl_pt.y;
+        point.z = pcl_pt.z;
     }
 
     ROS_INFO("u: %d, v: %d, rad: %d, us: %d, ue: %d, vs: %d, ve: %d, num rej: %d, num valid: %d", u, v, radius, u_start, u_end, v_start, v_end, total - num_valid_depths, num_valid_depths);
@@ -160,8 +180,10 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int thres
 
 void point_cloud_callback(const sensor_msgs::PointCloud2ConstPtr & msg)
 {
+	 mtx.lock();
     point_cloud_msg = *msg;
     received_point_cloud = true;
+    mtx.unlock();
 }
 
 void cam_info_callback(const sensor_msgs::CameraInfoPtr& msg)
@@ -228,7 +250,9 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
             int threshold = 1;
 
             // See if there's a point in the region
+            mtx.lock();
             geometry_msgs::Point point = get_average_point(cloud, u, v, threshold);
+            mtx.unlock();
 
             geometry_msgs::PointStamped point_stamped;
             point_stamped.header.stamp = msg->header.stamp;
