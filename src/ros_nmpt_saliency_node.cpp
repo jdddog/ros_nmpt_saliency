@@ -84,6 +84,10 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int radiu
     cx = cam_info.P[2];
     cy = cam_info.P[6];
 
+    pcl::PointXYZRGB pt = cloud.at(u,v);
+
+    ROS_INFO("x: %f, y: %f, z: %f", pt.x, pt.y, pt.z);
+
     // x and y use the standard image processing convention, (i.e., x goes from left to right and y goes from top to bottom). z means depth. Again, a standard right-handed coordinate system.
     //average_point.x = OUT_OF_RANGE_DEPTH * (u - cx) / fx; // Left
     //average_point.y = OUT_OF_RANGE_DEPTH * (v - cy) / fy; // Right
