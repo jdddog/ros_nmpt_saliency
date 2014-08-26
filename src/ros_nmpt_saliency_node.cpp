@@ -72,7 +72,7 @@ void update_visualization(Mat image, std_msgs::Header header, int x, int y)
     image_viz_pub.publish(viz_msg.toImageMsg());
 }
 
-geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int radius, int threshold)
+geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int threshold)
 {
     geometry_msgs::Point point;
     //pcl::PointXYZRGB cloud_point;
@@ -122,6 +122,8 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int radiu
     u_end = clamp(u + radius, 0, height);
     v_start = clamp(v - radius, 0, height);
     v_end = clamp(v + radius, 0, height);
+
+    num_valid_depths = 0;
 
     for(int i = u_start; i < u_end; i++)
     {
@@ -223,7 +225,7 @@ void image_callback(const sensor_msgs::ImageConstPtr& msg)
             int threshold = 1;
 
             // See if there's a point in the region
-            geometry_msgs::Point point = get_average_point(cloud, u, v, radius, threshold);
+            geometry_msgs::Point point = get_average_point(cloud, u, v, threshold);
 
             geometry_msgs::PointStamped point_stamped;
             point_stamped.header.stamp = msg->header.stamp;
@@ -274,6 +276,7 @@ int main(int argc, char **argv)
 	nhr.param<string>("camera_info", camera_info_topic, "");
 	nhr.param<bool>("visualize", visualize, true);
 	nhr.param<bool>("use_depth", use_depth, false);
+	nhr.param<int>("radius", radius, 1);
 
 	ROS_INFO("Image: %s", image_topic.c_str());
 	ROS_INFO("Point cloud: %s", point_cloud_topic.c_str());
