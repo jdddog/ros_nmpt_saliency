@@ -73,8 +73,8 @@ void update_visualization(Mat image, std_msgs::Header header, int x, int y)
 
 geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int radius, int threshold)
 {
-    geometry_msgs::Point average_point;
-    pcl::PointXYZRGB cloud_point;
+    geometry_msgs::Point point;
+    //pcl::PointXYZRGB cloud_point;
     double fx, fy, cx, cy, depth_sum;
     int width, height, u_start, u_end, v_start, v_end, num_valid_depths;
 
@@ -84,26 +84,46 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int radiu
     cx = cam_info.P[2];
     cy = cam_info.P[6];
 
-    pcl::PointXYZRGB pt = cloud.at(u,v);
+    pcl::PointXYZRGB pcl_pt = cloud.at(u,v);
+    width = cloud.width;
+    height = cloud.height;
 
-    ROS_INFO("x: %f, y: %f, z: %f", pt.x, pt.y, pt.z);
+    ROS_INFO("width: %d, height: %d, x: %f, y: %f, z: %f", width, height, pcl_pt.x, pcl_pt.y, pcl_pt.z);
+
+    if(pcl_pt.z == -1)
+    {
+        point.x = OUT_OF_RANGE_DEPTH * (u - cx) / fx; // Left
+        point.y = OUT_OF_RANGE_DEPTH * (v - cy) / fy; // Right
+        point.z = OUT_OF_RANGE_DEPTH;
+    }
+    else if(pcl_pt.z == -2)
+    {
+        point.x = OUT_OF_RANGE_DEPTH * (u - cx) / fx; // Left
+        point.y = OUT_OF_RANGE_DEPTH * (v - cy) / fy; // Right
+        point.z = 0.0;
+    }
+    else
+    {
+        point.x = pcl_pt.x;
+        point.y = pcl_pt.y;
+        point.z = pcl_pt.z;
+    }
 
     // x and y use the standard image processing convention, (i.e., x goes from left to right and y goes from top to bottom). z means depth. Again, a standard right-handed coordinate system.
     //average_point.x = OUT_OF_RANGE_DEPTH * (u - cx) / fx; // Left
     //average_point.y = OUT_OF_RANGE_DEPTH * (v - cy) / fy; // Right
 
     //Try to find depth value in range
-    width = cloud.width;
-    height = cloud.height;
-    u_start = clamp(u - radius, 0, width);
+
+    /*u_start = clamp(u - radius, 0, width);
     u_end = clamp(u + radius, 0, height);
     v_start = clamp(v - radius, 0, height);
-    v_end = clamp(v + radius, 0, height);
+    v_end = clamp(v + radius, 0, height);*/
 
-    depth_sum = 0.0;
-    num_valid_depths = 0;
+    //depth_sum = 0.0;
+    //num_valid_depths = 0;
 
-    for(int i = u_start; i < u_end; i++)
+    /*for(int i = u_start; i < u_end; i++)
     {
         for(int j = v_start; j < v_end; j++)
         {
@@ -117,20 +137,20 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int radiu
                 num_valid_depths++;
             }
         }
-    }
+    }*/
+//
+//    if(num_valid_depths < threshold)
+//    {
+//        average_point.x = OUT_OF_RANGE_DEPTH * (u - cx) / fx; // Left
+//        average_point.y = OUT_OF_RANGE_DEPTH * (v - cy) / fy; // Right
+//        average_point.z = OUT_OF_RANGE_DEPTH; // Forward
+//    }
+//    else
+//    {
+//        average_point.z = OUT_OF_RANGE_DEPTH;
+//    }
 
-    if(num_valid_depths < threshold)
-    {
-        average_point.x = OUT_OF_RANGE_DEPTH * (u - cx) / fx; // Left
-        average_point.y = OUT_OF_RANGE_DEPTH * (v - cy) / fy; // Right
-        average_point.z = OUT_OF_RANGE_DEPTH; // Forward
-    }
-    else
-    {
-        average_point.z = OUT_OF_RANGE_DEPTH;
-    }
-
-    return average_point;
+    return point;
 }
 
 void point_cloud_callback(const sensor_msgs::PointCloud2ConstPtr & msg)
