@@ -124,21 +124,24 @@ geometry_msgs::Point get_average_point(PointCloud cloud, int u, int v, int thres
     v_end = clamp(v + radius, 0, height);
 
     num_valid_depths = 0;
+    int total = 0;
 
-    for(int i = u_start; i < u_end; i++)
+    for(int i = u_start; i <= u_end; i++)
     {
-        for(int j = v_start; j < v_end; j++)
+        for(int j = v_start; j <= v_end; j++)
         {
              pcl::PointXYZRGB cloud_point = cloud.at(i, j);
 
-            if(cloud_point.x != -1)
+            if(cloud_point.x < 0.0)
             {
                 num_valid_depths++;
             }
+
+            total++;
         }
     }
 
-    ROS_INFO("u: %d, v: %d, rad: %d, us: %d, ue: %d, vs: %d, ve: %d, num rej: %d, num valid: %d", u, v, radius, u_start, u_end, v_start, v_end, radius-num_valid_depths, num_valid_depths);
+    ROS_INFO("u: %d, v: %d, rad: %d, us: %d, ue: %d, vs: %d, ve: %d, num rej: %d, num valid: %d", u, v, radius, u_start, u_end, v_start, v_end, total - num_valid_depths, num_valid_depths);
 
 //
 //    if(num_valid_depths < threshold)
